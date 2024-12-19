@@ -38,6 +38,7 @@ public class Dashing : MonoBehaviour
 
     private void Dash()
     {
+        gameObject.GetComponent<AudioSource>().Play();
         if(dashCdTimer > 0) return;
         else dashCdTimer = dashCd;
 

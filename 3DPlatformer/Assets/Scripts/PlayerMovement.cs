@@ -14,6 +14,7 @@ public class PlayerMovement : MonoBehaviour
 
     public float groundDrag;
     public float dashSpeed;
+    public float dashSpeedChangeFactor;
     public bool dashing;
 
     [Header("Ground Check")]
@@ -30,6 +31,10 @@ public class PlayerMovement : MonoBehaviour
 
     Rigidbody rb;
 
+    private float desiredMoveSpeed;
+    private float lastDesiredMoveSpeed;
+    private bool keepMomentum;
+
     void Start()
     {
         rb = GetComponent<Rigidbody>();
@@ -44,9 +49,12 @@ public class PlayerMovement : MonoBehaviour
         if(Input.GetKeyDown(KeyCode.Space)  && currentJumpCount > 0)
             Jump();
         if (dashing)
-            moveSpeed = dashSpeed;
+        {
+            desiredMoveSpeed = dashSpeed;
+            speedChangeFactor = dashSpeedChangeFactor;
+        }
         else
-            moveSpeed = defaultSpeed;
+            desiredMoveSpeed = defaultSpeed;
         
         MyInput();
         SpeedControl();
@@ -58,6 +66,41 @@ public class PlayerMovement : MonoBehaviour
         }
         else
             rb.drag = 0;
+        bool desiredMoveSpeedHasChanged = desiredMoveSpeed != lastDesiredMoveSpeed;
+        if (!dashing) keepMomentum = true;
+
+        if (desiredMoveSpeedHasChanged)
+        {
+            if(keepMomentum)
+            {
+                StartCoroutine(SmoothlyLerpMoveSpeed());
+            }
+            else{
+                moveSpeed = desiredMoveSpeed;
+            }
+        }
+        lastDesiredMoveSpeed = desiredMoveSpeed;
+    }
+
+    private float speedChangeFactor;
+
+    private IEnumerator SmoothlyLerpMoveSpeed()
+    {
+        float time = 0;
+        float difference = Mathf.Abs(desiredMoveSpeed - moveSpeed);
+        float startValue = moveSpeed;
+        float boostFactor = speedChangeFactor;
+
+        while (time < difference)
+        {
+            moveSpeed = Mathf.Lerp(startValue, desiredMoveSpeed, time / difference);
+            time += Time.deltaTime * boostFactor;
+            yield return null;
+        }
+
+        moveSpeed = desiredMoveSpeed;
+        speedChangeFactor = 1f;
+        keepMomentum = false;
     }
 
     private void FixedUpdate()
@@ -91,8 +134,8 @@ public class PlayerMovement : MonoBehaviour
 
     private void Jump()
     {
+        gameObject.GetComponent<AudioSource>().Play();
         currentJumpCount -= 1;
         rb.AddForce(transform.up * jumpForce, ForceMode.Impulse);
     }
-
 }
